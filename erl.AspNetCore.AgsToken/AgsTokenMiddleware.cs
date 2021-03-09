@@ -34,7 +34,34 @@ namespace erl.AspNetCore.AgsToken
 
         private async Task<string> GetAgsToken(ICacheEntry entry)
         {
-            var tokenData = await AgsServer.GenerateToken(_options.Scheme, _options.Host, _options.Port, _options.Instance, _options.Username, _options.Password);
+            AgsTokenResponse tokenData = null;
+            try
+            {
+                tokenData = await AgsServer.GenerateToken(_options.Scheme, _options.Host, _options.Port, _options.Instance, _options.Username, _options.Password);
+            }
+            catch
+            {
+                //failed to get token the usual way. 
+            }
+
+            try
+            {
+                //Try the Network Collector way(copied code from Dinesh)
+                if (tokenData is null)
+                {
+                    var baseUrl = $"{_options.Scheme}://{_options.Host}:{_options.Port}/{_options.Instance}";
+                    var op = new Operation(baseUrl);
+                    var referer = baseUrl;
+                    var token = await op.Authenticate(_options.Username, _options.Password, null, referer);
+                }
+                    
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            
 
             // set cache entry expiry
             var expires = FromUnixTime(tokenData.expires);
